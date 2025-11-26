@@ -1,3 +1,4 @@
+<?php session_start(); ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -11,24 +12,26 @@
 <body id="page-top" class="bg-white text-dark">
 <nav class="navbar navbar-expand-lg navbar-light fixed-top bg-transparent py-3">
   <div class="container">
-    <a class="navbar-brand brand" href="index.html#page-top">ÉCLÉ</a>
+    <a class="navbar-brand brand" href="index.php#page-top">ÉCLÉ</a>
     <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
       <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse justify-content-end" id="mainNav">
       <ul class="navbar-nav align-items-center">
-        <li class="nav-item"><a class="nav-link" href="index.html#page-top">Home</a></li>
-        <li class="nav-item"><a class="nav-link" href="collection.html">Collection</a></li>
-        <li class="nav-item"><a class="nav-link" href="index.html#Bag">Bag</a></li>
+        <li class="nav-item"><a class="nav-link" href="index.php#page-top">Home</a></li>
+        <li class="nav-item"><a class="nav-link" href="collection.php">Collection</a></li>
+        <li class="nav-item"><a class="nav-link" href="index.php#Bag">Bag</a></li>
         
         <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" id="navbarUserDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">User</a>
+<a class="nav-link dropdown-toggle" href="#" id="navbarUserDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+  <?php echo $_SESSION['user_name'] ?? 'User'; ?>
+</a>
           <ul class="dropdown-menu" aria-labelledby="navbarUserDropdown">
-            <li><a class="dropdown-item" href="index.html#Account">Login / Sign In</a></li> 
-            <li><a class="dropdown-item" href="user.html">View Profile</a></li>
+            <li><a class="dropdown-item" href="index.php#Account">Login / Sign In</a></li> 
+            <li><a class="dropdown-item" href="./user.php">View Profile</a></li>
           </ul></li>
-        <li class="nav-item"><a class="nav-link" href="index.html#lookbook">Lookbook</a></li>
-        <li class="nav-item"><a class="nav-link" href="index.html#contact">Contact</a></li>
+        <li class="nav-item"><a class="nav-link" href="index.php#lookbook">Lookbook</a></li>
+        <li class="nav-item"><a class="nav-link" href="index.php#contact">Contact</a></li>
       </ul>
 </div></div></nav>
 
@@ -37,7 +40,7 @@
     <h2 class="section-title text-center mb-5 mt-5">Create Your ÉCLÉ Account</h2>
     <div class="row g-4 justify-content-center align-items-stretch">
       
-      <div class="col-md-5 d-none d-md-flex"> <img src="assets/acc.jpg" class="img-fluid rounded-3 shadow-sm w-100 h-100" >  </div>
+      <div class="col-md-5 d-none d-md-flex"> <img src="assets/acc2.jpg" class="img-fluid rounded-3 shadow-sm w-100 h-100" >  </div>
 
       <div class="col-md-5">
         <div class="card product-card h-100">
@@ -101,7 +104,7 @@ function handleRegister(e) {
     errorMsg.textContent = "Processing...";
     errorMsg.classList.remove('text-danger', 'text-success');
 
-    fetch('auth.php', { 
+    fetch('./auth.php', { 
         method: 'POST',
         body: formData
     })
@@ -111,7 +114,7 @@ function handleRegister(e) {
             errorMsg.textContent = data.message + " Redirecting to login...";
             errorMsg.classList.add('text-success');
             setTimeout(() => {
-                window.location.href = "index.html#Account";
+                window.location.href = "index.php#Account";
             }, 1500);
         } else {
             errorMsg.textContent = "Error: " + data.message;

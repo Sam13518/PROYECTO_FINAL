@@ -6,8 +6,10 @@ include "conex.php";
 $response = ["success" => false, "message" => "Invalid action"];
 
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action'])) {
+
     $action = $_POST["action"];
 
+    // ===================== REGISTER =====================
     if ($action === "register") {
         $name       = trim($_POST["name"]);
         $email      = trim($_POST["email"]);
@@ -17,9 +19,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action'])) {
         $card       = trim($_POST["card_number"]);
 
         if (!empty($email) && !empty($password)) {
-            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
-            $check = $conn->prepare("SELECT id FROM users WHERE email=?");
+            $check = $conn->prepare("SELECT id_user FROM users WHERE email=?");
             $check->bind_param("s", $email);
             $check->execute();
             $check->store_result();
@@ -27,8 +28,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action'])) {
             if ($check->num_rows > 0) {
                 $response = ["success"=>false, "message"=>"This email is already registered"];
             } else {
-                $stmt = $conn->prepare("INSERT INTO users (name,email,password,birth_date,card_number,postal_address) VALUES (?,?,?,?,?,?)");
-                $stmt->bind_param("ssssss", $name,$email,$hashed_password,$birth_date,$card,$address);
+                $stmt = $conn->prepare("INSERT INTO users (name,email,password,birth_date,card_number,postal_address) 
+                VALUES (?,?,?,?,?,?)");
+
+                $stmt->bind_param("ssssss", $name, $email, $password, $birth_date, $card, $address);
 
                 if($stmt->execute()){
                     $response = ["success"=>true, "message"=>"Account created successfully!"];
@@ -43,36 +46,72 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action'])) {
         }
     }
 
+    // ===================== LOGIN =====================
     if ($action === "login") {
         $email = trim($_POST["email"]);
         $password = $_POST["password"];
 
         if(!empty($email) && !empty($password)){
-            $stmt = $conn->prepare("SELECT id,name,password FROM users WHERE email=?");
-            $stmt->bind_param("s",$email);
-            $stmt->execute();
-            $result = $stmt->get_result();
 
-            if($result->num_rows===1){
-                $user = $result->fetch_assoc();
-                if(password_verify($password,$user['password'])){
-                    $_SESSION["user_id"] = $user["id"];
-                    $_SESSION["user_name"] = $user["name"];
-                    $_SESSION["email"] = $email;
-                    $response=["success"=>true,"message"=>"Login successful!"];
+            // ---------- CHECK ADMIN ----------
+            $stmtAdmin = $conn->prepare("SELECT id_admin,name,password FROM admins WHERE email=?");
+            $stmtAdmin->bind_param("s", $email);
+            $stmtAdmin->execute();
+            $resultAdmin = $stmtAdmin->get_result();
+
+            if($resultAdmin->num_rows === 1){
+                $admin = $resultAdmin->fetch_assoc();
+
+                if($password === $admin['password']){
+                    $_SESSION["admin_id"] = $admin["id_admin"];
+                    $_SESSION["admin_name"] = $admin["name"];
+
+                    $response = ["success"=>true, "role"=>"admin"];   // IMPORTANTE
                 } else {
-                    $response=["success"=>false,"message"=>"Incorrect password"];
+                    $response = ["success"=>false, "message"=>"Incorrect password"];
                 }
+
             } else {
-                $response=["success"=>false,"message"=>"Email not found"];
+
+                // ---------- CHECK USER ----------
+                $stmtUser = $conn->prepare("SELECT id_user,name,password FROM users WHERE email=?");
+                $stmtUser->bind_param("s",$email);
+                $stmtUser->execute();
+                $resultUser = $stmtUser->get_result();
+
+                if($resultUser->num_rows === 1){
+                    $user = $resultUser->fetch_assoc();
+
+                    if($password === $user['password']){
+                        $_SESSION["user_id"] = $user["id_user"];
+                        $_SESSION["user_name"] = $user["name"];
+                        $_SESSION["email"]     = $email;
+
+                        $response = ["success"=>true, "role"=>"user"];  // IMPORTANTE
+                    } else {
+                        $response = ["success"=>false, "message"=>"Incorrect password"];
+                    }
+                } else {
+                    $response = ["success"=>false, "message"=>"Email not found"];
+                }
+
+                $stmtUser->close();
             }
-            $stmt->close();
+            $stmtAdmin->close();
         } else {
-            $response=["success"=>false,"message"=>"Please enter email and password"];
+            $response = ["success"=>false, "message"=>"Please enter email and password"];
         }
+    }
+
+    // ===================== LOGOUT =====================
+    if ($action === "logout") {
+        session_destroy();
+        echo json_encode(["success" => true]);
+        exit();
     }
 }
 
+// ===================== END =====================
 $conn->close();
 echo json_encode($response);
 ?>

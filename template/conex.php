@@ -1,9 +1,9 @@
 <?php
-$host = "db";   
+$host = "mysql-joyeria";   
 $user = "root";
 $pass = "root";
 $db   = "joyeria";
-$port = 3306;
+$port = 3306;             
 
 $conn = new mysqli($host, $user, $pass, $db, $port);
 

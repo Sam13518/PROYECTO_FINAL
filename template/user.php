@@ -1,15 +1,19 @@
 <?php
 session_start();
 if (!isset($_SESSION["user_id"])) {
-  header("Location: index.html#Account");
+  header("Location: index.php#Account");
   exit();
 }
 
-// Obtain session data for display
 $userId = $_SESSION["user_id"];
 $userName = $_SESSION["user_name"];
 $userEmail = $_SESSION["email"];
+$birthDate  = $_SESSION["birthDate"] ?? "";
+$cardNumber = $_SESSION["cardNumber"] ?? "";
+$address    = $_SESSION["address"] ?? "";
+$createdAt  = $_SESSION["createdAt"] ?? "";
 ?>
+
 
 <!DOCTYPE html>
 <html lang="es">
@@ -25,29 +29,29 @@ $userEmail = $_SESSION["email"];
 
 <nav class="navbar navbar-expand-lg navbar-light fixed-top bg-transparent py-3">
   <div class="container">
-    <a class="navbar-brand brand" href="index.html#page-top">ÉCLÉ</a>
+    <a class="navbar-brand brand" href="index.php#page-top">ÉCLÉ</a>
     <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
       <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse justify-content-end" id="mainNav">
       <ul class="navbar-nav align-items-center">
-        <li class="nav-item"><a class="nav-link" href="index.html#page-top">Home</a></li>
-        <li class="nav-item"><a class="nav-link" href="collection.html">Collection</a></li>
-        <li class="nav-item"><a class="nav-link" href="index.html#Bag">Bag</a></li>
+        <li class="nav-item"><a class="nav-link" href="index.php#page-top">Home</a></li>
+        <li class="nav-item"><a class="nav-link" href="collection.php">Collection</a></li>
+<li class="nav-item"><a class="nav-link" href="user.php#Bag">Bag</a></li>
         
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle active" href="#" id="navbarUserDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
             User
           </a>
-          <ul class="dropdown-menu" aria-labelledby="navbarUserDropdown">
-            <li><a class="dropdown-item" href="index.html#Account">Login / Sign In</a></li> 
-            <li><a class="dropdown-item" href="newaccount.html">Create Account</a></li>
-            <li><a class="dropdown-item" href="#">View Profile</a></li>
-          </ul>
+ <ul class="dropdown-menu" aria-labelledby="navbarUserDropdown">
+  <li><a class="dropdown-item" href="user.php">View Profile</a></li>
+  <li><a class="dropdown-item text-danger" href="#" onclick="logoutUser()">Logout</a></li>
+</ul>
+
         </li>
         
-        <li class="nav-item"><a class="nav-link" href="index.html#lookbook">Lookbook</a></li>
-        <li class="nav-item"><a class="nav-link" href="index.html#contact">Contact</a></li>
+        <li class="nav-item"><a class="nav-link" href="index.php#lookbook">Lookbook</a></li>
+        <li class="nav-item"><a class="nav-link" href="index.php#contact">Contact</a></li>
       </ul>
     </div>
   </div>
@@ -71,7 +75,7 @@ $userEmail = $_SESSION["email"];
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bag me-2" viewBox="0 0 16 16"><path d="M8 1a2.5 2.5 0 0 1 2.5 2.5V4h-5v-.5A2.5 2.5 0 0 1 8 1m3.5 3v-.5a3.5 3.5 0 1 0-7 0V4H1v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4zM2 5h12v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/></svg>
                     My Orders
                 </a>
-                <a class="nav-link text-danger" href="index.html" onclick="logoutUser()">
+<a class="nav-link text-danger" href="#" onclick="logoutUser()">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-box-arrow-right me-2" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0z"/><path fill-rule="evenodd" d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z"/></svg>
                     Logout
                 </a>
@@ -165,6 +169,53 @@ $userEmail = $_SESSION["email"];
   </div>
 </section>
 
+<section id="Bag" class="container mt-4">
+  <h2>🛍 Mi Carrito</h2>
+  <div id="cartItems"></div>
+  <p class="mt-3 fw-bold" id="cartTotal"></p>
+</section>
+
+<script>
+function loadCart() {
+  const cart = JSON.parse(localStorage.getItem("cart")) || [];
+  let html = "";
+  let total = 0;
+
+  if (cart.length === 0) {
+    document.getElementById("cartItems").innerHTML = "<p>Tu carrito está vacío.</p>";
+    document.getElementById("cartTotal").innerHTML = "";
+    return;
+  }
+
+  cart.forEach(item => {
+    html += `
+      <div class="d-flex justify-content-between border-bottom py-2">
+        <span>${item.name} x ${item.quantity}</span>
+        <span>$${item.price}</span>
+      </div>`;
+    total += item.price * item.quantity;
+  });
+
+  document.getElementById("cartItems").innerHTML = html;
+  document.getElementById("cartTotal").innerHTML = "Total: $" + total;
+}
+
+loadCart();
+</script>
+
+    <script>
+    // AQUÍ PÉGALO
+    function logoutUser() {
+      fetch("auth.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: "action=logout"
+      }).then(() => {
+          localStorage.removeItem("cart");
+          window.location.href = "index.php#Account";
+      });
+    }
+    </script>
 
 <footer class="footer text-center mt-0">
   <div class="container">  <p class="mb-0 small">© 2025 ÉCLÉ Jewelry — The essence of elegance</p> </div> 

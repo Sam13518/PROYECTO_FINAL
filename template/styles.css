@@ -156,3 +156,17 @@ body{
   .product-card img{height:240px}
   .hero{padding:80px 1rem}
 }
+
+.look-wrapper {
+  display: flex;
+  gap: 10px;
+}
+
+.look-img {
+  width: 33.33%;
+  height: 500px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+
