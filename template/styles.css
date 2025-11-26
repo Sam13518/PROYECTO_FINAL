@@ -18,11 +18,9 @@ body{
   -moz-osx-font-smoothing:grayscale;
 }
 
-/* NAVBAR */
 .navbar{
   transition: background .25s ease, padding .25s ease;
-  background: linear-gradient(180deg, var(--rose-gold), var(--champagne));
-}
+  background: linear-gradient(180deg, var(--rose-gold), var(--champagne)); }
 
 .navbar-brand.brand{
   font-family:'Playfair Display', serif;
@@ -32,19 +30,16 @@ body{
   font-size:1.45rem;
 }
 
-.navbar .nav-link,
-.navbar-brand{
+.navbar .nav-link, .navbar-brand{
   color:#ffffff !important;
   font-weight:700;
-  font-size:0.95rem;
-}
+  font-size:0.95rem; }
 
 .navbar .nav-link:hover{
   color:#faecd1 !important;
   transition:.25s;
 }
 
-/* HERO */
 .hero{
   height:100vh;
   display:flex;
@@ -64,9 +59,8 @@ body{
   font-weight:900;
 }
 
-/* TITLES & SECTIONS */
 .section{
-  padding:40px 0; /* Reducido para quitar huecos enormes */
+  padding:40px 0; 
 }
 
 .section-title{
@@ -97,7 +91,6 @@ body{
   text-align:center;
 }
 
-/* BUTTON */
 .btn-cta{
   background:linear-gradient(180deg, var(--rose-gold), var(--champagne));
   color:var(--white);
@@ -108,7 +101,6 @@ body{
   box-shadow:0 8px 20px rgba(200,150,120,.22);
 }
 
-/* PRODUCT CARD */
 .product-card{
   border:0;
   border-radius:14px;
@@ -153,6 +145,7 @@ body{
   color:var(--muted);
   font-size:.95rem;
   text-align:center;
+    width: 100%;
   margin-top: 50px;
   
 }

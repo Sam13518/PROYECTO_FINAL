@@ -1,28 +1,35 @@
 services:
-  db:
+  web-joyeria:
+    build: .
+    container_name: web-joyeria
+    ports:
+      - "8000:80"
+    volumes:
+      - ./template:/var/www/html
+    depends_on:
+      - mysql-joyeria
+
+  mysql-joyeria:
     image: mysql:8.0
     container_name: mysql-joyeria
-    restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: tienda_joyeria
+      MYSQL_DATABASE: joyeria
     ports:
       - "3307:3306"
     volumes:
       - db_data:/var/lib/mysql
 
-  phpmyadmin:
+  phpmyadmin-joyeria:
     image: phpmyadmin/phpmyadmin
     container_name: phpmyadmin-joyeria
-    restart: unless-stopped
-    depends_on:
-      - db
     environment:
-      PMA_HOST: db
+      PMA_HOST: mysql-joyeria
       PMA_PORT: 3306
     ports:
       - "8080:80"
+    depends_on:
+      - mysql-joyeria
 
 volumes:
   db_data:
-
