@@ -1,15 +1,19 @@
 <?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-?>
-
-
-<!-- <?php
 session_start();
+require_once "conex.php";
 $username = $_SESSION["user_name"] ?? null;
-?> -->
-
+$products = [];
+$stmt = $conn->prepare("SELECT * FROM products WHERE type = ? ORDER BY created_at ASC");
+$typeFilter = "New Collection";
+$stmt->bind_param("s", $typeFilter);
+$stmt->execute();
+$result = $stmt->get_result();
+while($row = $result->fetch_assoc()){
+    $products[] = $row;
+}
+$stmt->close();
+$conn->close();
+?> 
 
 <!DOCTYPE html>
 <html lang="es">
@@ -18,7 +22,7 @@ $username = $_SESSION["user_name"] ?? null;
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>ÉCLÉ — jewelry</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet" />
 <link href="styles.css" rel="stylesheet" />
 </head>
 <body id="page-top" class="bg-white text-dark">
@@ -33,59 +37,72 @@ $username = $_SESSION["user_name"] ?? null;
       <ul class="navbar-nav align-items-center">
         <li class="nav-item"><a class="nav-link" href="#page-top">Home</a></li>
         <li class="nav-item"><a class="nav-link" href="collection.php">Collection</a></li>
-<li class="nav-item"><a class="nav-link" href="#" onclick="goToCart()">Bag</a></li>
+        <li class="nav-item"><a class="nav-link" href="#" onclick="goToCart()">Bag</a></li>
         <li class="nav-item dropdown">
-<a class="nav-link dropdown-toggle" href="#" id="navbarUserDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-  <?= $username ? $username : "User"; ?>
-</a>
-        <ul class="dropdown-menu" aria-labelledby="navbarUserDropdown">
-<li><a class="dropdown-item" href="#Account" onclick="document.getElementById('loginEmail').focus()">Login / Sign In</a></li>
+          <a class="nav-link dropdown-toggle" href="#" id="navbarUserDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <?= $username ? htmlspecialchars($username) : "User"; ?>
+          </a>
+          <ul class="dropdown-menu" aria-labelledby="navbarUserDropdown">
+            <li><a class="dropdown-item" href="#Account" onclick="document.getElementById('loginEmail').focus()">Login / Sign In</a></li>
             <li><a class="dropdown-item" href="newaccount.php">Create Account</a></li>
             <li><a class="dropdown-item" href="./user.php">View Profile</a></li>
-          </ul></li>
+          </ul>
+        </li>
         <li class="nav-item"><a class="nav-link" href="#lookbook">Lookbook</a></li>
         <li class="nav-item"><a class="nav-link" href="#contact">Contact</a></li>
-      </ul></div></div>
+      </ul>
+    </div>
+  </div>
 </nav>
 
-<header class="hero d-flex align-items-center"><div class="container text-center">
+<header class="hero d-flex align-items-center">
+  <div class="container text-center">
     <h1 class="display-3 title">ÉCLÉ</h1>
     <p class="lead subtitle">Exquisite Jewelry · Champagne Shine · A Timeless Masterpiece</p>
-    <a class="btn btn-primary btn-cta" href="#collection">Ver colección</a>
+    <a class="btn btn-primary btn-cta" href="collection.php">View Collection </a>
   </div>
 </header>
 
 <section id="collection" class="section">
-  <div class="container"> <div class="row align-items-center mb-5"> <div class="col-lg-6">
-        <h2 class="section-title">New Collection </h2>
-        <p class="section-desc"> Exquisite fine jewelry, crafted with precision and refined sophistication.</p>
-        <a class="btn btn-outline-dark btn-sm" href="collection.php">Buy the collection</a>
+  <div class="container">
+    <div class="row align-items-center mb-5">
+      <div class="col-lg-6">
+        <h2 class="section-title">New Collection</h2>
+        <p class="section-desc">Exquisite fine jewelry, crafted with precision and refined sophistication.</p>
+            <div class="text-center mt-3"><a class="btn btn-outline-dark btn-sm" href="collection.php">Buy the collection</a></div>
       </div>
       <div class="col-lg-6 text-end d-none d-lg-block">
-        <img src="assets/NC0.jpg"  alt="joya hero" class="img-fluid rounded-3 shadow-sm" style="max-width:420px;">
-      </div></div>
-    <div class="row g-4"><div class="col-md-4"><div class="card product-card">
-          <img src="assets/NC1.jpg" class="card-img-top" alt="Collar Oro Champagne">
-          <div class="card-body text-center">
-          <h5 class="card-title">ÉCLÉ Timeless Watch</h5><p class="price">3,200 MXN</p>
-    <button class="btn btn-primary btn-cta me-2" onclick="addToCart('ÉCLÉ Timeless Watch', 3200, 10)">Add to Bag</button>
-          </div> </div> </div>
-      <div class="col-md-4"><div class="card product-card">
-          <img src="assets/NC2.jpg" class="card-img-top" alt="Anillo Oro Rosa">
-          <div class="card-body text-center">
-            <h5 class="card-title">Italian Grace Bracelet</h5>
-            <p class="price">450 MXN</p>
-    <button class="btn btn-primary btn-cta me-2" onclick="addToCart('Italian Grace Bracelet', 450, 15)">Add to Bag</button>
-    </div></div></div>
+        <img src="assets/NC0.jpg" alt="joya hero" class="img-fluid rounded-3 shadow-sm" style="max-width:420px;">
+      </div>
+    </div>
 
-      <div class="col-md-4"><div class="card product-card">
-          <img src="assets/NC3.jpg" class="card-img-top" alt="Pulsera Minimal">
+    <div class="row g-4 justify-content-center">
+      <?php foreach($products as $product): ?>
+      <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+        <div class="card product-card">
+          <?php if(!empty($product['photo'])): ?>
+            <img src="data:image/jpeg;base64,<?= base64_encode($product['photo']); ?>" alt="<?= htmlspecialchars($product['name']); ?>" class="card-img-top">
+          <?php else: ?>
+            <img src="assets/default.jpg" alt="No image" class="card-img-top">
+          <?php endif; ?>
           <div class="card-body text-center">
-            <h5 class="card-title">Starlight  Necklace</h5>
-            <p class="price">320 MXN</p>
-    <button class="btn btn-primary btn-cta me-2" onclick="addToCart('Starlight  Necklace', 320, 12)"> Add to Bag </button>
-          </div></div></div></div></div>
+            <h5 class="card-title"><?= htmlspecialchars($product['name']); ?></h5>
+            <p class="price">$<?= number_format($product['price'],2); ?> MXN</p>
+            <a href="collection.php#newcollection" class="btn btn-primary btn-cta w-100">
+  View Collection 🛍️
+</a>
+
+          </div>
+        </div>
+      </div>
+      <?php endforeach; ?>
+      <?php if(count($products) === 0): ?>
+        <p class="text-center">No products available in New Collection yet.</p>
+      <?php endif; ?>
+    </div>
+  </div>
 </section>
+
 
 
 <!-- About Section -->
@@ -179,7 +196,6 @@ $username = $_SESSION["user_name"] ?? null;
 <!-- footer -->
 <footer class="footer text-center">
   <div class="container">  <p class="mb-0 small">© 2025 ÉCLÉ Jewelry — The essence of elegance</p> </div> </footer>
-
 <script>
 function handleLogin(event) {
   event.preventDefault();
@@ -199,107 +215,23 @@ function handleLogin(event) {
   })
   .then(res => res.json())
   .then(data => {
-
     if (data.success) {
-      window.location.href = "user.php";
+      // 🔹 Redirige según rol
+      if (data.role === "admin") {
+        window.location.href = "admin.php";
+      } else {
+        window.location.href = "user.php";
+      }
     } else {
-      errorText.textContent = data.message; 
+      errorText.textContent = data.message;
     }
-
   })
   .catch(() => {
     errorText.textContent = "Connection error. Please try again.";
   });
 }
 </script>
-<script>
-let cart = JSON.parse(localStorage.getItem("cart")) || [];
-let inventory = JSON.parse(localStorage.getItem("inventory")) || {
-  "Collar ÉCLÉ": 10,
-  "Anillo Aurora": 15,
-  "Pulsera Estelar": 12
-};
 
-function saveCart() {
-  localStorage.setItem("cart", JSON.stringify(cart));
-}
-
-function renderCart() {
-  const container = document.getElementById("cartItems");
-  const totalElem = document.getElementById("cartTotal");
-  container.innerHTML = "";
-
-  let total = 0;
-
-  cart.forEach((item, index) => {
-    total += item.price * item.qty;
-
-    container.innerHTML += `
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <strong>${item.name}</strong>
-        <input type="number" min="1" value="${item.qty}" class="form-control form-control-sm"
-          style="width:60px" onchange="updateQty(${index}, this.value)">
-        <span>${item.price * item.qty} MXN</span>
-        <button class="btn btn-sm btn-danger" onclick="removeItem(${index})">X</button>
-      </div>
-    `;
-  });
-
-  totalElem.textContent = total;
-}
-
-function addToCart(name, price, stock) {
-  if (inventory[name] <= 0) {
-    alert("Inventario agotado");
-    return;
-  }
-
-  const existing = cart.find(item => item.name === name);
-  if (existing) {
-    existing.qty++;
-  } else {
-    cart.push({ name, price, qty: 1 });
-  }
-
-  saveCart();
-  renderCart();
-  new bootstrap.Modal(document.getElementById("cartModal")).show();
-}
-
-function updateQty(index, qty) {
-  cart[index].qty = parseInt(qty);
-  saveCart();
-  renderCart();
-}
-
-function removeItem(index) {
-  cart.splice(index, 1);
-  saveCart();
-  renderCart();
-}
-
-function clearCart() {
-  cart = [];
-  saveCart();
-  renderCart();
-}
-
-function completePurchase() {
-  cart.forEach(item => inventory[item.name] -= item.qty);
-
-  localStorage.setItem("inventory", JSON.stringify(inventory));
-
-  const history = JSON.parse(localStorage.getItem("history")) || [];
-  history.push({ date: new Date().toLocaleString(), items: [...cart] });
-  localStorage.setItem("history", JSON.stringify(history));
-
-  cart = [];
-  saveCart();
-  renderCart();
-
-  alert("Compra realizada con éxito.");
-}
-</script>
 <script>
 function goToCart() {
   fetch("auth.php?checkSession=true")
@@ -313,7 +245,6 @@ function goToCart() {
       }
     });
 }
-
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>

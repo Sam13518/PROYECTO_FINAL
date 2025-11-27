@@ -2,18 +2,100 @@
 session_start();
 if (!isset($_SESSION["user_id"])) {
   header("Location: index.php#Account");
-  exit();
+  exit();}
+
+require_once "conex.php"; 
+$userId = $_SESSION["user_id"];
+// GET ORDERS
+if(isset($_GET['get_orders']) && $_GET['get_orders'] == 1){
+    $stmt = $conn->prepare("SELECT id_buy, buy_date, total_amount FROM buy_history WHERE id_user = ? ORDER BY buy_date DESC");
+    $stmt->bind_param("i", $userId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $orders = [];
+    while($row = $result->fetch_assoc()){
+        $orders[] = $row;}
+    header('Content-Type: application/json');
+    echo json_encode($orders);
+    exit(); }
+
+// CHECKOUT
+if(isset($_GET['checkout']) && $_GET['checkout'] == 1){
+    $data = json_decode(file_get_contents('php://input'), true);
+    $cart = $data['cart'] ?? [];
+    if(empty($cart)){
+        echo json_encode(['status'=>'error','msg'=>'El carrito está vacío']);
+        exit(); }
+    $total = 0;
+    foreach($cart as $item){
+        $id = (int)($item['id'] ?? 0);
+        $qty = (int)($item['qty'] ?? $item['quantity'] ?? 0);
+        $price = (float)($item['price'] ?? 0);
+        if($id <= 0 || $qty <= 0 || $price <= 0){
+            echo json_encode(['status'=>'error','msg'=>'Datos del carrito inválidos']);
+            exit();}
+        $total += $price * $qty; }
+
+    $conn->begin_transaction();
+    try {
+        $stmt = $conn->prepare("INSERT INTO buy_history (id_user, total_amount) VALUES (?, ?)");
+        $stmt->bind_param("id", $userId, $total);
+        $stmt->execute();
+        $buyId = $stmt->insert_id;
+        $stmt->close();
+        $stmt = $conn->prepare("INSERT INTO buy_details (id_buy, id_product, quantity, price) VALUES (?, ?, ?, ?)");
+        foreach($cart as $item){
+            $id = (int)($item['id']);
+            $qty = (int)($item['qty'] ?? $item['quantity']);
+            $price = (float)($item['price']);
+            $stmt->bind_param("iiid", $buyId, $id, $qty, $price);
+            $stmt->execute(); }
+        $stmt->close();
+        $conn->commit();
+        echo json_encode(['status'=>'success']);
+    } catch(Exception $e){
+        $conn->rollback();
+        echo json_encode(['status'=>'error','msg'=>$e->getMessage()]);}
+    exit(); }
+
+// UPDATE PROFILE
+if(isset($_GET['update_profile']) && $_GET['update_profile'] == 1){
+    $name      = $_POST["profileName"] ?? "";
+    $birthDate = $_POST["profileBirthDate"] ?? "";
+    $card      = $_POST["profileCardNumber"] ?? "";
+    $address   = $_POST["profileAddress"] ?? "";
+    $pass      = $_POST["profilePass"] ?? "";
+    if ($pass == "") {
+        $stmt = $conn->prepare("UPDATE users SET name=?, birth_date=?, card_number=?, postal_address=? WHERE id_user=?");
+        $stmt->bind_param("ssssi", $name, $birthDate, $card, $address, $userId);
+    } else {
+        $hashed = password_hash($pass, PASSWORD_DEFAULT);
+        $stmt = $conn->prepare("UPDATE users SET name=?, birth_date=?, card_number=?, postal_address=?, password=? WHERE id_user=?");
+        $stmt->bind_param("sssssi", $name, $birthDate, $card, $address, $hashed, $userId);
+    }
+    if ($stmt->execute()) {
+        $_SESSION["user_name"] = $name; // actualizar sesión
+        echo "Profile updated successfully!";
+    } else {
+        echo "Error updating profile: " . $conn->error;}
+    $stmt->close();
+    exit();
 }
 
-$userId = $_SESSION["user_id"];
-$userName = $_SESSION["user_name"];
-$userEmail = $_SESSION["email"];
-$birthDate  = $_SESSION["birthDate"] ?? "";
-$cardNumber = $_SESSION["cardNumber"] ?? "";
-$address    = $_SESSION["address"] ?? "";
-$createdAt  = $_SESSION["createdAt"] ?? "";
+// GET USER
+$stmt = $conn->prepare("SELECT name, email, birth_date, card_number, postal_address, created_at FROM users WHERE id_user = ?");
+$stmt->bind_param("i", $userId);
+$stmt->execute();
+$res = $stmt->get_result();
+$user = $res->fetch_assoc();
+$userName   = $user["name"];
+$userEmail  = $user["email"];
+$birthDate  = $user["birth_date"];
+$cardNumber = $user["card_number"];
+$address    = $user["postal_address"];
+$createdAt  = $user["created_at"];
+$stmt->close();
 ?>
-
 
 <!DOCTYPE html>
 <html lang="es">
@@ -37,19 +119,16 @@ $createdAt  = $_SESSION["createdAt"] ?? "";
       <ul class="navbar-nav align-items-center">
         <li class="nav-item"><a class="nav-link" href="index.php#page-top">Home</a></li>
         <li class="nav-item"><a class="nav-link" href="collection.php">Collection</a></li>
-<li class="nav-item"><a class="nav-link" href="user.php#Bag">Bag</a></li>
-        
+        <li class="nav-item"><a class="nav-link" href="user.php#Bag">Bag</a></li>
         <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle active" href="#" id="navbarUserDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            User
+          <a class="nav-link dropdown-toggle active" href="#" id="navbarUserDropdown" role="button" data-bs-toggle="dropdown">
+            <?php echo htmlspecialchars($userName); ?>
           </a>
- <ul class="dropdown-menu" aria-labelledby="navbarUserDropdown">
-  <li><a class="dropdown-item" href="user.php">View Profile</a></li>
-  <li><a class="dropdown-item text-danger" href="#" onclick="logoutUser()">Logout</a></li>
-</ul>
-
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="user.php">View Profile</a></li>
+            <li><a class="dropdown-item text-danger" href="#" onclick="logoutUser()">Logout</a></li>
+          </ul>
         </li>
-        
         <li class="nav-item"><a class="nav-link" href="index.php#lookbook">Lookbook</a></li>
         <li class="nav-item"><a class="nav-link" href="index.php#contact">Contact</a></li>
       </ul>
@@ -60,122 +139,67 @@ $createdAt  = $_SESSION["createdAt"] ?? "";
 <section id="UserProfile" class="section bg-warning bg-opacity-10 section-full-height">
   <div class="container">
     <h2 class="section-title text-center mb-5 mt-5">My Account Dashboard</h2>
-    
-    <div class="row g-4 justify-content-center">
-      
-      <div class="col-md-3">
+    <div class="row g-4 justify-content-center"> <div class="col-md-3">
         <div class="card product-card h-100 p-3">
-<h4 class="h5 mb-3">Hello, <span id="userNameDisplay"><?php echo $userName; ?></span></h4>
-            <div class="nav flex-column nav-pills" id="v-pills-tab" role="tablist" aria-orientation="vertical">
-                <a class="nav-link active" id="v-pills-profile-tab" data-bs-toggle="pill" data-bs-target="#v-pills-profile" role="tab" aria-controls="v-pills-profile">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-person-circle me-2" viewBox="0 0 16 16"><path d="M11 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0"/><path fill-rule="evenodd" d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8m8-7a7 7 0 0 0-5.468 11.37C3.242 11.226 4.805 10 8 10s4.757 1.225 5.468 2.37A7 7 0 0 0 8 1"/></svg>
-                    Profile Details
-                </a>
-                <a class="nav-link" id="v-pills-orders-tab" data-bs-toggle="pill" data-bs-target="#v-pills-orders" role="tab" aria-controls="v-pills-orders">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bag me-2" viewBox="0 0 16 16"><path d="M8 1a2.5 2.5 0 0 1 2.5 2.5V4h-5v-.5A2.5 2.5 0 0 1 8 1m3.5 3v-.5a3.5 3.5 0 1 0-7 0V4H1v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4zM2 5h12v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/></svg>
-                    My Orders
-                </a>
-<a class="nav-link text-danger" href="#" onclick="logoutUser()">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-box-arrow-right me-2" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0z"/><path fill-rule="evenodd" d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z"/></svg>
-                    Logout
-                </a>
-            </div>
-        </div>
-      </div>
+            <h4 class="h5 mb-3">Hello, <span id="userNameDisplay"><?php echo $userName; ?></span></h4>
+            <div class="nav flex-column nav-pills">
+                <a class="nav-link active" data-bs-toggle="pill" data-bs-target="#v-pills-profile">Profile Details</a>
+              <button class="nav-link btn btn-light w-100 text-center mb-2" onclick="showOrders()"> 📦 My Orders 📦 </button>
+              <button class="nav-link btn btn-light w-100 text-center text-danger" onclick="logoutUser()"> 👋 Logout</button>
+            </div>  </div> </div>
 
-      <div class="col-md-7">
-        <div class="card product-card h-100">
-          <div class="card-body p-4">
-
-            <div class="tab-content" id="v-pills-tabContent">
-                
-                <div class="tab-pane fade show active" id="v-pills-profile" role="tabpanel" aria-labelledby="v-pills-profile-tab">
+      <div class="col-md-7">  <div class="card product-card h-100">
+          <div class="card-body p-4">   <div class="tab-content">
+                <div class="tab-pane fade show active" id="v-pills-profile">
                     <h3 class="card-title mb-4">Account Information</h3>
                     <form id="profileForm" onsubmit="updateProfile(event)">
-                        
                         <div class="mb-3">
                             <label class="form-label small text-muted">User ID</label>
-<input type="text" class="form-control" id="profileId" value="<?php echo $userId; ?>" disabled>
+                            <input type="text" class="form-control" value="<?php echo $userId; ?>" disabled>
                         </div>
-                        
                         <div class="mb-3">
                           <label class="form-label small text-muted">Name</label>
-<input type="text" class="form-control" id="profileName" value="<?php echo $userName; ?>" required>
+                          <input type="text" class="form-control" id="profileName" value="<?php echo $userName; ?>" required>
                         </div>
-
                         <div class="mb-3">
-                          <label class="form-label small text-muted">Email (Cannot be changed)</label>
-<input type="email" class="form-control" id="profileEmail" value="<?php echo $userEmail; ?>" disabled>
+                          <label class="form-label small text-muted">Email</label>
+                          <input type="email" class="form-control" value="<?php echo $userEmail; ?>" disabled>
                         </div>
-                        
                         <div class="mb-3">
                           <label class="form-label small text-muted">Birth Date</label>
-<input type="date" class="form-control" id="profileBirthDate" value="<?php echo $birthDate; ?>" required>
+                          <input type="date" class="form-control" id="profileBirthDate" value="<?php echo $birthDate; ?>" required>
                         </div>
-
                         <div class="mb-3">
                           <label class="form-label small text-muted">Password</label>
-<input type="password" class="form-control" id="profilePass" placeholder="Enter new password to change">
-                        </div>
-
+                          <input type="password" class="form-control" id="profilePass" placeholder="Enter new password to change"> </div>
                         <div class="mb-3">
                           <label class="form-label small text-muted">Card Number</label>
-<input type="text" class="form-control" id="profileCardNumber" value="<?php echo $cardNumber; ?>">
-                        </div>
-                        
+                          <input type="text" class="form-control" id="profileCardNumber" value="<?php echo $cardNumber; ?>"> </div>                   
                         <div class="mb-3">
                           <label class="form-label small text-muted">Shipping Address</label>
-<textarea class="form-control" id="profileAddress" rows="3"><?php echo $address; ?></textarea>
-                        </div>
-
+                          <textarea class="form-control" id="profileAddress" rows="3"><?php echo $address; ?></textarea> </div>
                         <div class="mb-4">
                             <label class="form-label small text-muted">Account Creation Date</label>
-<input type="text" class="form-control" id="profileCreatedAt" value="<?php echo $createdAt; ?>" disabled>
+                            <input type="text" class="form-control" value="<?php echo $createdAt; ?>" disabled>
                         </div>
-
                         <button type="submit" class="btn btn-cta">Save Changes</button>
                     </form>
-                </div>
-
-                <div class="tab-pane fade" id="v-pills-orders" role="tabpanel" aria-labelledby="v-pills-orders-tab">
-                    <h3 class="card-title mb-4">Order History</h3>
-                    <p class="text-muted">No recent orders found in the last 6 months.</p>
-                    
-                    <div class="list-group">
-                        <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center mb-2">
-                            <div>
-                                <h6 class="mb-1">Order #10023</h6>
-                                <p class="mb-0 small text-muted">Date: 2025-10-15 | Total: 4,620 MXN</p>
-                            </div>
-                            <span class="badge bg-success rounded-pill">Shipped</span>
-                        </div>
-                        <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="mb-1">Order #10011</h6>
-                                <p class="mb-0 small text-muted">Date: 2025-08-01 | Total: 1,850 MXN</p>
-                            </div>
-                            <span class="badge bg-warning text-dark rounded-pill">Pending</span>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-
-          </div>
-        </div>
-      </div>
-      
-    </div>
-  </div>
+                </div> </div> </div> </div> </div> </div> </div>
 </section>
 
 <section id="Bag" class="container mt-4">
-  <h2>🛍 Mi Carrito</h2>
+  <h2>🛍 My Bag 🛍</h2>
   <div id="cartItems"></div>
   <p class="mt-3 fw-bold" id="cartTotal"></p>
+  <button class="btn btn-success mt-3" onclick="checkout()">Checkout</button>
 </section>
 
+<section id="Orders" class="container mt-4">
+  <h2>📦 My Orders 📦</h2>
+  <div id="ordersItems"><p class="text-muted">Cargando pedidos...</p></div>
+</section>
 <script>
+// Bag
 function loadCart() {
   const cart = JSON.parse(localStorage.getItem("cart")) || [];
   let html = "";
@@ -184,44 +208,108 @@ function loadCart() {
   if (cart.length === 0) {
     document.getElementById("cartItems").innerHTML = "<p>Tu carrito está vacío.</p>";
     document.getElementById("cartTotal").innerHTML = "";
-    return;
-  }
+    return;  }
 
   cart.forEach(item => {
-    html += `
-      <div class="d-flex justify-content-between border-bottom py-2">
-        <span>${item.name} x ${item.quantity}</span>
-        <span>$${item.price}</span>
-      </div>`;
-    total += item.price * item.quantity;
-  });
+    const qty = item.quantity ?? item.qty ?? 1;
+    const price = parseFloat(item.price) || 0;
+    html += `<div class="d-flex justify-content-between border-bottom py-2">
+      <span>${item.name} x ${qty}</span>
+      <span>$${(price * qty).toFixed(2)}</span>
+    </div>`;
+    total += price * qty;  });
 
   document.getElementById("cartItems").innerHTML = html;
-  document.getElementById("cartTotal").innerHTML = "Total: $" + total;
+  document.getElementById("cartTotal").innerHTML = "Total: $" + total.toFixed(2);
+} loadCart();
+
+// LOGOUT
+function logoutUser() {
+  fetch("auth.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "action=logout"
+  }).then(() => {
+      localStorage.removeItem("cart");
+      window.location.href = "index.php#Account";  });
 }
 
-loadCart();
+// CHECKOUT
+function checkout() {
+  const cart = JSON.parse(localStorage.getItem("cart")) || [];
+  if(cart.length === 0) return alert("Tu carrito está vacío.");
+
+  const cartData = cart.map(item => ({
+    id: item.id,
+    qty: item.quantity ?? item.qty ?? 1,
+    price: parseFloat(item.price) || 0   }));
+
+  fetch('user.php?checkout=1', {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json' },
+    body: JSON.stringify({cart: cartData})  })
+  .then(res => res.json())
+  .then(data => {
+    if(data.status === 'success'){
+      localStorage.removeItem('cart');
+      alert("Compra realizada con éxito!");
+      loadCart();
+      showOrders();
+    } else { alert("Error: " + data.msg);
+    }  });  }
+
+// ORDERS
+function showOrders() {
+  const ordersContainer = document.getElementById("ordersItems");
+  fetch('user.php?get_orders=1')
+    .then(res => res.json())
+    .then(data => {
+      if(data.length === 0){
+        ordersContainer.innerHTML = "<p>No recent orders found.</p>";
+      } else {
+        let html = '<div class="list-group">';
+        data.forEach(order => {
+          html += `<div class="list-group-item d-flex justify-content-between align-items-center mb-2">
+            <div>
+              <h6 class="mb-1">Order #${order.id_buy}</h6>
+              <p class="mb-0 small text-muted">Date: ${order.buy_date} | Total: $${parseFloat(order.total_amount).toFixed(2)}</p>
+            </div>
+          </div>`;
+        });
+        html += '</div>';
+        ordersContainer.innerHTML = html;  }
+      document.getElementById("Orders").scrollIntoView({behavior: "smooth"});
+    });
+}
+document.addEventListener("DOMContentLoaded", () => {
+  showOrders();
+});
+
+
+// UPDATE PROFILE
+function updateProfile(event) {
+  event.preventDefault();
+  const formData = new FormData();
+  formData.append("profileName", document.getElementById("profileName").value);
+  formData.append("profileBirthDate", document.getElementById("profileBirthDate").value);
+  formData.append("profileCardNumber", document.getElementById("profileCardNumber").value);
+  formData.append("profileAddress", document.getElementById("profileAddress").value);
+  formData.append("profilePass", document.getElementById("profilePass").value);
+  fetch("user.php?update_profile=1", {
+    method: "POST",
+    body: formData   })
+  .then(res => res.text())
+  .then(response => {
+    alert("Profile updated successfully!");
+    location.reload();  })
+  .catch(error => console.error("Error:", error)); }
 </script>
 
-    <script>
-    // AQUÍ PÉGALO
-    function logoutUser() {
-      fetch("auth.php", {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: "action=logout"
-      }).then(() => {
-          localStorage.removeItem("cart");
-          window.location.href = "index.php#Account";
-      });
-    }
-    </script>
-
 <footer class="footer text-center mt-0">
-  <div class="container">  <p class="mb-0 small">© 2025 ÉCLÉ Jewelry — The essence of elegance</p> </div> 
+  <div class="container">  
+    <p class="mb-0 small">© 2025 ÉCLÉ Jewelry — The essence de la elegancia</p> 
+  </div> 
 </footer>
-
-
 
 </body>
 </html>
