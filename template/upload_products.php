@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $conn->prepare("INSERT INTO products (name, description, photo, price, stock, material, type, manufacturer, origin)
                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
        $stmt->bind_param(
-    "ssbdiisss",
+    "ssbdissss",
     $name,
     $description,
     $imgData, // aquí pones directamente los datos de la imagen
@@ -114,9 +114,9 @@ $conn->close();
             <select name="type" class="form-control" required>
                 <option value="">--Please select a category--</option>
                 <option value="New Collection">New Collection</option>
-                <option value="Ring">Rings</option>
-                <option value="Bracelet">Bracelets</option>
-                <option value="Necklace">Necklaces</option>
+                <option value="Rings">Rings</option>
+                <option value="Bracelets">Bracelets</option>
+                <option value="Necklaces">Necklaces</option>
                 <option value="Earrings">Earrings</option>
                 <option value="Limited Edition">Limited Edition</option>
             </select></div>
